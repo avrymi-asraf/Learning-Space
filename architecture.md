@@ -14,6 +14,8 @@
    - `ModelConfig`s and `Action`s are **never** edited through the UI; they are configured directly in clean, modular source code files:
      - **`src/config/modelConfigs.ts`**: Pure model invocation configs (`provider`, `modelId`, `modality`, `settings`) for Gemini models or external/local providers (OpenAI, Anthropic, Ollama, Custom HTTP).
      - **`src/config/actions.ts`**: Parameterized Actions containing an ordered `models: ModelConfig[]` array and an async `run({ params, models, assets, tools })` function written directly in code.
-3. **Open-Source `@marp-team/marp-core` Engine for `.ppx` Presentations**:
-   - `.ppx` presentations use **Marp (`@marp-team/marp-core`)** with `html: true` and `math: 'katex'`.
-   - Compiles Markdown (`---` slide separators), **Pictures** (`![w:420](...)`, `![bg right:40%](...)`), **Inline `<svg>` diagrams & charts**, **HTML/CSS grids**, and **LaTeX equations** (`$...$` and `$$...$$`) into scalable 16:9 SVG slides.
+3. **Standard Open-Source Libraries (Avoid Reinventing the Wheel)**:
+   - **Markdown & LaTeX Equations (`src/utils/mathRenderer.tsx`)**: Powered by **`react-markdown`**, **`remark-math`**, **`rehype-katex`**, and **`remark-gfm`** instead of custom regex parsers.
+   - **Presentations & Infographics (`src/utils/ppxFormat.ts`)**: Powered by **`@marp-team/marp-core`** (`html: true`, `math: 'katex'`) supporting Markdown, Pictures, inline `<svg>` vector diagrams, and math equations.
+   - **Interactive Concept Graphs (`src/components/AssetEditors.tsx`)**: Powered by **`@xyflow/react`** (React Flow) with built-in zoom/pan controls, node dragging, and edge connection handles.
+   - **Local Browser Persistence (`src/services/storage.ts`)**: Powered by **`idb-keyval`** for concise, reliable IndexedDB persistence.

@@ -3,7 +3,7 @@ import {
   ChatMessage,
   LearningAsset,
 } from '../types';
-import { renderMarkdownWithMath } from '../utils/mathRenderer';
+import { MarkdownView } from '../utils/mathRenderer';
 import {
   Send,
   Mic,

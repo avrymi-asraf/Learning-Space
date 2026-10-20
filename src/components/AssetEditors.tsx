@@ -1,4 +1,18 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import {
+  ReactFlow,
+  Background,
+  Controls,
+  addEdge,
+  Connection,
+  Edge,
+  Node,
+  NodeChange,
+  EdgeChange,
+  applyNodeChanges,
+  applyEdgeChanges,
+} from '@xyflow/react';
+import '@xyflow/react/dist/style.css';
 import {
   LearningAsset,
   NotebookDocument,
@@ -6,10 +20,9 @@ import {
   ConceptGraphDocument,
   GraphNode,
 } from '../types';
-import { renderMarkdownWithMath } from '../utils/mathRenderer';
+import { MarkdownView } from '../utils/mathRenderer';
 import {
   renderMarpDeck,
-  splitMarpSlides,
   joinMarpSlides,
   MARP_INSERT_TEMPLATES,
 } from '../utils/ppxFormat';
@@ -32,7 +45,6 @@ import {
   Sigma,
   Image as ImageIcon,
   Shapes,
-  Upload,
 } from 'lucide-react';
 
 interface AssetStageProps {
@@ -123,7 +135,7 @@ export const AssetStage: React.FC<AssetStageProps> = ({
 };
 
 // ============================================================================
-// 1. MARKDOWN + LATEX EQUATION STUDIO (.md)
+// 1. MARKDOWN + LATEX EQUATION STUDIO (.md) — Powered by react-markdown + KaTeX
 // ============================================================================
 const EQUATION_SNIPPETS = [
   { label: 'Inline $...$', snippet: '$E = \\hbar \\omega$' },
@@ -239,10 +251,9 @@ const MarkdownEquationStudio: React.FC<{
               viewMode === 'split' ? 'lg:col-span-6' : 'lg:col-span-12'
             } flex flex-col h-full min-h-0 overflow-y-auto px-6 py-5`}
           >
-            <div
-              className="max-w-[68ch] mx-auto w-full"
-              dangerouslySetInnerHTML={{ __html: renderMarkdownWithMath(asset.content) }}
-            />
+            <div className="max-w-[68ch] mx-auto w-full">
+              <MarkdownView content={asset.content} />
+            </div>
 
             <div className="max-w-[68ch] mx-auto w-full mt-8 pt-5 border-t border-slate-200">
               <h4 className="font-display text-xs font-semibold text-slate-500 mb-2.5">
@@ -299,8 +310,7 @@ const MarkdownEquationStudio: React.FC<{
 };
 
 // ============================================================================
-// 2. OPEN-SOURCE MARP (.PPX) PRESENTATION & INFOGRAPHIC STUDIO
-//    Supports Markdown, Pictures (![]()), Inline <svg>, HTML grids, & Equations
+// 2. OPEN-SOURCE MARP (.PPX) PRESENTATION STUDIO — Powered by @marp-team/marp-core
 // ============================================================================
 const MarpPresentationStudio: React.FC<{
   asset: LearningAsset;
@@ -357,10 +367,8 @@ const MarpPresentationStudio: React.FC<{
 
   return (
     <div className="flex flex-col h-full bg-slate-50">
-      {/* Inject Marp compiled CSS */}
       <style dangerouslySetInnerHTML={{ __html: deck.css }} />
 
-      {/* Toolbar: Insert Pictures, SVGs, Equations, Grids */}
       <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2 bg-white border-b border-slate-200">
         <div className="flex flex-wrap items-center gap-1.5">
           <button
@@ -387,7 +395,6 @@ const MarpPresentationStudio: React.FC<{
             + 2-Column Layout
           </button>
 
-          {/* Insert Workspace Picture or Upload Picture */}
           {pictureAssets.length > 0 && (
             <select
               defaultValue=""
@@ -446,10 +453,8 @@ const MarpPresentationStudio: React.FC<{
         </div>
       </div>
 
-      {/* Main Marp Slide Workspace */}
       <div className="flex-1 flex min-h-0 overflow-hidden">
-        {/* Left Slide Strip */}
-        <div className="w-44 border-r border-slate-200 bg-white flex flex-col p-2.5 gap-2 overflow-y-auto shrink-0">
+        <div className="w-40 border-r border-slate-200 bg-white flex flex-col p-2.5 gap-2 overflow-y-auto shrink-0">
           {deck.slidesHtml.map((svgHtml, idx) => (
             <button
               key={idx}
@@ -460,8 +465,8 @@ const MarpPresentationStudio: React.FC<{
                   : 'border-slate-200 hover:border-slate-300 bg-white'
               }`}
             >
-              <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 mb-1">
-                <span>SLIDE {idx + 1}</span>
+              <div className="text-[10px] font-mono text-slate-400 mb-1">
+                SLIDE {idx + 1}
               </div>
               <div
                 className="w-full aspect-video rounded overflow-hidden border border-slate-200 bg-white pointer-events-none"
@@ -471,9 +476,7 @@ const MarpPresentationStudio: React.FC<{
           ))}
         </div>
 
-        {/* Center/Right: Live Marp SVG Slide Stage + Slide Editor (Markdown + HTML + SVG + Images) */}
         <div className="flex-1 grid grid-cols-1 xl:grid-cols-12 min-h-0 overflow-hidden">
-          {/* Rendered 16:9 Marp SVG Slide */}
           <div
             className={`${
               viewMode === 'present' ? 'xl:col-span-12' : 'xl:col-span-7'
@@ -505,7 +508,7 @@ const MarpPresentationStudio: React.FC<{
                     className="text-xs text-slate-400 hover:text-red-600 inline-flex items-center gap-1"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
-                    Delete Slide
+                    Delete
                   </button>
                 )}
               </div>
@@ -522,11 +525,10 @@ const MarpPresentationStudio: React.FC<{
             </div>
           </div>
 
-          {/* Slide Markdown + SVG + Picture Editor */}
           {viewMode === 'split' && (
             <div className="xl:col-span-5 border-l border-slate-200 bg-white flex flex-col h-full min-h-0">
-              <div className="px-4 py-2 bg-slate-50 border-b border-slate-200 text-[11px] font-mono text-slate-500 flex items-center justify-between">
-                <span>SLIDE {safeIdx + 1} SOURCE (Marp Markdown + &lt;svg&gt; + Pictures)</span>
+              <div className="px-4 py-2 bg-slate-50 border-b border-slate-200 text-[11px] font-mono text-slate-500">
+                SLIDE {safeIdx + 1} SOURCE (Marp Markdown + &lt;svg&gt; + Pictures)
               </div>
               <textarea
                 value={currentSlideMarkdown}
@@ -757,10 +759,9 @@ const JupyterNotebookStudio: React.FC<{
                   }
                   className="w-full p-3.5 font-mono text-xs text-slate-800 focus:outline-none resize-y"
                 />
-                <div
-                  className="p-3.5 prose-sm"
-                  dangerouslySetInnerHTML={{ __html: renderMarkdownWithMath(cell.content) }}
-                />
+                <div className="p-3.5">
+                  <MarkdownView content={cell.content} />
+                </div>
               </div>
             ) : (
               <div>
@@ -829,13 +830,13 @@ const JupyterNotebookStudio: React.FC<{
 };
 
 // ============================================================================
-// 4. INTERACTIVE CONCEPT GRAPH STUDIO (.graph)
+// 4. INTERACTIVE CONCEPT GRAPH STUDIO (.graph) — Powered by @xyflow/react
 // ============================================================================
-const CATEGORY_COLORS: Record<GraphNode['category'], { fill: string; stroke: string; text: string }> = {
-  core: { fill: '#EFF6FF', stroke: '#2563EB', text: '#1E40AF' },
-  equation: { fill: '#FEF3C7', stroke: '#D97706', text: '#92400E' },
-  experiment: { fill: '#ECFDF5', stroke: '#059669', text: '#065F46' },
-  application: { fill: '#F3E8FF', stroke: '#7C3AED', text: '#5B21B6' },
+const CATEGORY_BORDER_COLORS: Record<GraphNode['category'], string> = {
+  core: '#2563EB',
+  equation: '#D97706',
+  experiment: '#059669',
+  application: '#7C3AED',
 };
 
 const ConceptGraphStudio: React.FC<{
@@ -844,37 +845,92 @@ const ConceptGraphStudio: React.FC<{
   onUpdate: (content: string) => void;
   onSelectAsset: (assetId: string) => void;
 }> = ({ asset, allAssets, onUpdate, onSelectAsset }) => {
-  let graph: ConceptGraphDocument = { nodes: [], edges: [] };
-  try {
-    const parsed = JSON.parse(asset.content);
-    graph = {
-      nodes: Array.isArray(parsed.nodes) ? parsed.nodes : [],
-      edges: Array.isArray(parsed.edges) ? parsed.edges : [],
-    };
-  } catch {
-    graph = { nodes: [], edges: [] };
-  }
+  const parseDoc = useCallback((): ConceptGraphDocument => {
+    try {
+      const parsed = JSON.parse(asset.content);
+      return {
+        nodes: Array.isArray(parsed.nodes) ? parsed.nodes : [],
+        edges: Array.isArray(parsed.edges) ? parsed.edges : [],
+      };
+    } catch {
+      return { nodes: [], edges: [] };
+    }
+  }, [asset.content]);
 
+  const doc = parseDoc();
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(
-    graph.nodes[0]?.id || null
+    doc.nodes[0]?.id || null
   );
-  const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);
-  const svgRef = useRef<SVGSVGElement>(null);
 
-  const selectedNode = graph.nodes.find((n) => n.id === selectedNodeId) || null;
+  // Convert domain GraphNodes/GraphEdges into @xyflow/react Nodes & Edges
+  const flowNodes: Node[] = doc.nodes.map((n) => ({
+    id: n.id,
+    position: { x: n.x, y: n.y },
+    data: { label: n.label },
+    style: {
+      border: `2px solid ${
+        n.id === selectedNodeId
+          ? '#1D4ED8'
+          : CATEGORY_BORDER_COLORS[n.category] || '#2563EB'
+      }`,
+      borderRadius: '10px',
+      padding: '8px 12px',
+      fontSize: '12px',
+      fontWeight: 600,
+      background: '#FFFFFF',
+      color: '#0F172A',
+      width: 170,
+    },
+  }));
 
-  const updateGraph = (next: ConceptGraphDocument) => {
-    onUpdate(JSON.stringify(next, null, 2));
+  const flowEdges: Edge[] = doc.edges.map((e) => ({
+    id: e.id,
+    source: e.source,
+    target: e.target,
+    label: e.label,
+    animated: false,
+  }));
+
+  const saveGraph = (nextDoc: ConceptGraphDocument) => {
+    onUpdate(JSON.stringify(nextDoc, null, 2));
   };
 
-  const handleSvgMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
-    if (!draggingNodeId || !svgRef.current) return;
-    const rect = svgRef.current.getBoundingClientRect();
-    const x = Math.max(80, Math.min(rect.width - 80, e.clientX - rect.left));
-    const y = Math.max(50, Math.min(rect.height - 50, e.clientY - rect.top));
-    updateGraph({
-      ...graph,
-      nodes: graph.nodes.map((n) => (n.id === draggingNodeId ? { ...n, x, y } : n)),
+  const onNodesChange = (changes: NodeChange[]) => {
+    const updatedFlowNodes = applyNodeChanges(changes, flowNodes);
+    const nextNodes = doc.nodes.map((n) => {
+      const fn = updatedFlowNodes.find((u) => u.id === n.id);
+      return fn
+        ? { ...n, x: Math.round(fn.position.x), y: Math.round(fn.position.y) }
+        : n;
+    });
+    saveGraph({ ...doc, nodes: nextNodes });
+  };
+
+  const onEdgesChange = (changes: EdgeChange[]) => {
+    const updatedFlowEdges = applyEdgeChanges(changes, flowEdges);
+    const nextEdges = updatedFlowEdges.map((e) => ({
+      id: e.id,
+      source: e.source,
+      target: e.target,
+      label: String(e.label || ''),
+    }));
+    saveGraph({ ...doc, edges: nextEdges });
+  };
+
+  const onConnect = (connection: Connection) => {
+    if (!connection.source || !connection.target) return;
+    const updatedEdges = addEdge(
+      { ...connection, id: `e-${Date.now()}`, label: 'connects' },
+      flowEdges
+    );
+    saveGraph({
+      ...doc,
+      edges: updatedEdges.map((e) => ({
+        id: e.id,
+        source: e.source,
+        target: e.target,
+        label: String(e.label || 'connects'),
+      })),
     });
   };
 
@@ -885,12 +941,12 @@ const ConceptGraphStudio: React.FC<{
       label: 'New Concept',
       category: 'core',
       summary: 'Concept description.',
-      x: 300,
-      y: 200,
+      x: 240,
+      y: 180,
     };
     const nextEdges = selectedNodeId
       ? [
-          ...graph.edges,
+          ...doc.edges,
           {
             id: `e-${Date.now()}`,
             source: selectedNodeId,
@@ -898,18 +954,22 @@ const ConceptGraphStudio: React.FC<{
             label: 'relates to',
           },
         ]
-      : graph.edges;
-    updateGraph({
-      nodes: [...graph.nodes, newNode],
+      : doc.edges;
+    saveGraph({
+      nodes: [...doc.nodes, newNode],
       edges: nextEdges,
     });
     setSelectedNodeId(newId);
   };
 
+  const selectedNode = doc.nodes.find((n) => n.id === selectedNodeId) || null;
+
   return (
     <div className="flex flex-col h-full bg-white">
       <div className="flex items-center justify-between px-4 py-2 border-b border-slate-200 bg-slate-50">
-        <div className="text-xs font-medium text-slate-700">Concept Graph</div>
+        <div className="text-xs font-medium text-slate-700">
+          Concept Graph (React Flow — Drag nodes or connect handles)
+        </div>
         <button
           onClick={addConceptNode}
           className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 whitespace-nowrap shrink-0"
@@ -920,94 +980,19 @@ const ConceptGraphStudio: React.FC<{
       </div>
 
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 min-h-0 overflow-hidden">
-        <div className="lg:col-span-8 h-full bg-slate-50/50 relative overflow-hidden">
-          <svg
-            ref={svgRef}
-            onMouseMove={handleSvgMouseMove}
-            onMouseUp={() => setDraggingNodeId(null)}
-            onMouseLeave={() => setDraggingNodeId(null)}
-            className="w-full h-full cursor-grab active:cursor-grabbing select-none"
+        <div className="lg:col-span-8 h-full relative">
+          <ReactFlow
+            nodes={flowNodes}
+            edges={flowEdges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onConnect={onConnect}
+            onNodeClick={(_e, node) => setSelectedNodeId(node.id)}
+            fitView
           >
-            {graph.edges.map((edge) => {
-              const s = graph.nodes.find((n) => n.id === edge.source);
-              const t = graph.nodes.find((n) => n.id === edge.target);
-              if (!s || !t) return null;
-              const midX = (s.x + t.x) / 2;
-              const midY = (s.y + t.y) / 2;
-              return (
-                <g key={edge.id}>
-                  <line
-                    x1={s.x}
-                    y1={s.y}
-                    x2={t.x}
-                    y2={t.y}
-                    stroke="#94A3B8"
-                    strokeWidth="2"
-                  />
-                  <rect
-                    x={midX - 42}
-                    y={midY - 10}
-                    width="84"
-                    height="20"
-                    rx="4"
-                    fill="#FFFFFF"
-                    stroke="#E2E8F0"
-                  />
-                  <text
-                    x={midX}
-                    y={midY + 4}
-                    textAnchor="middle"
-                    fill="#475569"
-                    fontSize="10"
-                    fontFamily="sans-serif"
-                  >
-                    {edge.label}
-                  </text>
-                </g>
-              );
-            })}
-
-            {graph.nodes.map((node) => {
-              const style = CATEGORY_COLORS[node.category] || CATEGORY_COLORS.core;
-              const isSelected = node.id === selectedNodeId;
-              return (
-                <g
-                  key={node.id}
-                  transform={`translate(${node.x}, ${node.y})`}
-                  onMouseDown={(e) => {
-                    e.stopPropagation();
-                    setSelectedNodeId(node.id);
-                    setDraggingNodeId(node.id);
-                  }}
-                  className="cursor-pointer"
-                >
-                  <rect
-                    x="-85"
-                    y="-26"
-                    width="170"
-                    height="52"
-                    rx="10"
-                    fill={style.fill}
-                    stroke={isSelected ? '#1D4ED8' : style.stroke}
-                    strokeWidth={isSelected ? '3' : '1.5'}
-                  />
-                  <text
-                    x="0"
-                    y="-4"
-                    textAnchor="middle"
-                    fill={style.text}
-                    fontSize="12"
-                    fontWeight="bold"
-                  >
-                    {node.label.slice(0, 22)}
-                  </text>
-                  <text x="0" y="13" textAnchor="middle" fill="#64748B" fontSize="10">
-                    {node.category.toUpperCase()}
-                  </text>
-                </g>
-              );
-            })}
-          </svg>
+            <Background color="#CBD5E1" gap={20} />
+            <Controls />
+          </ReactFlow>
         </div>
 
         <div className="lg:col-span-4 border-l border-slate-200 p-4 bg-white overflow-y-auto space-y-3">
@@ -1015,16 +1000,16 @@ const ConceptGraphStudio: React.FC<{
             <>
               <div className="flex items-center justify-between">
                 <span className="font-mono text-xs text-slate-400">NODE DETAILS</span>
-                {graph.nodes.length > 1 && (
+                {doc.nodes.length > 1 && (
                   <button
                     onClick={() => {
-                      updateGraph({
-                        nodes: graph.nodes.filter((n) => n.id !== selectedNode.id),
-                        edges: graph.edges.filter(
+                      saveGraph({
+                        nodes: doc.nodes.filter((n) => n.id !== selectedNode.id),
+                        edges: doc.edges.filter(
                           (e) => e.source !== selectedNode.id && e.target !== selectedNode.id
                         ),
                       });
-                      setSelectedNodeId(graph.nodes[0]?.id || null);
+                      setSelectedNodeId(doc.nodes[0]?.id || null);
                     }}
                     className="text-xs text-red-600 hover:underline"
                   >
@@ -1039,9 +1024,9 @@ const ConceptGraphStudio: React.FC<{
                   type="text"
                   value={selectedNode.label}
                   onChange={(e) =>
-                    updateGraph({
-                      ...graph,
-                      nodes: graph.nodes.map((n) =>
+                    saveGraph({
+                      ...doc,
+                      nodes: doc.nodes.map((n) =>
                         n.id === selectedNode.id ? { ...n, label: e.target.value } : n
                       ),
                     })
@@ -1056,9 +1041,9 @@ const ConceptGraphStudio: React.FC<{
                   rows={3}
                   value={selectedNode.summary}
                   onChange={(e) =>
-                    updateGraph({
-                      ...graph,
-                      nodes: graph.nodes.map((n) =>
+                    saveGraph({
+                      ...doc,
+                      nodes: doc.nodes.map((n) =>
                         n.id === selectedNode.id ? { ...n, summary: e.target.value } : n
                       ),
                     })
@@ -1074,9 +1059,9 @@ const ConceptGraphStudio: React.FC<{
                 <select
                   value={selectedNode.linkedAssetId || ''}
                   onChange={(e) =>
-                    updateGraph({
-                      ...graph,
-                      nodes: graph.nodes.map((n) =>
+                    saveGraph({
+                      ...doc,
+                      nodes: doc.nodes.map((n) =>
                         n.id === selectedNode.id ? { ...n, linkedAssetId: e.target.value } : n
                       ),
                     })

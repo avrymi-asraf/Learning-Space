@@ -1,8 +1,11 @@
 # Learning Space — System Architecture (`archtacture.md`)
 
-See `/architecture.md` for the full architectural blueprint:
-- **Single-Page Layout**: Left = Assets (no checkboxes or counts), Center = Edit/View Asset & Chat/Live Voice, Right = Action buttons.
-- **Direct Code Configuration**:
-  - `src/config/modelConfigs.ts`: Pure model callers (Gemini + external/local models).
-  - `src/config/actions.ts`: Actions with parameters, ordered `models` list, and async `run` code.
-- **Open-Source `.ppx` Presentation Engine**: Powered by `@marp-team/marp-core`, supporting Markdown, Pictures (`![]()`), Inline `<svg>` vector diagrams, HTML layouts, and KaTeX equations.
+> Note: This file mirrors `/architecture.md` for agents and developers. Never rendered in the UI.
+
+- **Single-Page 3-Column Layout**: Left (`Assets`, no checkboxes/counts) · Center (`Asset & Chat`) · Right (`Actions` as buttons).
+- **Code-Defined Model Configs & Actions**: Edited directly in `src/config/modelConfigs.ts` and `src/config/actions.ts`.
+- **Standard Open-Source Libraries**:
+  - `react-markdown` + `remark-math` + `rehype-katex` + `remark-gfm` for Markdown and LaTeX math rendering.
+  - `@marp-team/marp-core` for `.ppx` slide decks with pictures, `<svg>` diagrams, HTML layouts, and KaTeX math.
+  - `@xyflow/react` for interactive concept graph dragging, panning, zooming, and connecting.
+  - `idb-keyval` for 2-line IndexedDB browser persistence.

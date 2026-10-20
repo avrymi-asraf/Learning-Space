@@ -1,0 +1,6 @@
+{
+  "name": "Learning Space",
+  "description": "A modular, local-first AI learning studio inspired by NotebookLM for multi-modal study assets, interactive slides, runnable notebooks, grounded chat, live voice tutoring, and programmable AI actions.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
